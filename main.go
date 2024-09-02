@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 // Define a home handler function which writes a byte slice containig
@@ -16,12 +18,30 @@ func home(w http.ResponseWriter, r *http.Request) {
 // more routes
 // Add a snippetView handler function.
 func snippetView(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Display spific snippt ..*"))
+	// Extract the value of the id wildcard from the request using r.PathValue()
+	// and try to convert it to an integer using the strconv.Atoi() function. If
+	// it can't be converted to an integer, or the value is less than 1, we
+	// return a 404 page not found response.
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil || id < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Use the fmt.Sprintf() function to interpolate the id value with a
+	// message, then write it as the HTTP response.
+	msg := fmt.Sprintf("Display a specific snippet with id %d", id)
+	w.Write([]byte(msg))
 }
 
 // Add a snippetCreate handler function.
 func snippetCreate(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Display a form for creating a new snippet..."))
+}
+
+// Add a snippetCreatePost handler function.
+func snippetCreatePost(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Save a new snippet .."))
 }
 
 func main() {
@@ -38,13 +58,22 @@ func main() {
 	//When a route pattern ends with a trailing slash — like "/" or "/static/" — it is known as a
 	//subtree path pattern. Subtree path patterns are matched (and the corresponding handler
 	//called) whenever the start of a request URL path matches the subtree path
-	
+
 	// mux.HandleFunc("/", home)
-	mux.HandleFunc("/{$}", home) // Restrict this route to exact matches on / only.
-	mux.HandleFunc("/snippt/view", snippetView)
-	mux.HandleFunc("/snippt/create", snippetCreate)
+
+	// Prefix the route patterns with the required HTTP method (for now, we will
+	// restrict all three routes to acting on GET requests).
+	mux.HandleFunc("GET /{$}", home)                      // Restrict this route to exact matches on / only.
+	mux.HandleFunc("GET /snippet/view/{id}", snippetView) //add the {id} wildcard segment
+	mux.HandleFunc("GET /snippet/create", snippetCreate)
+
+	// Create the new route, which is restricted to POST requests only.
+	mux.HandleFunc("POST /snippet/create", snippetCreatePost)
 
 	// print a log message to say the the server is starting
+	// Notice that it’s totally OK to declare two (or more) separate routes that have different HTTP
+	// methods but otherwise have the same pattern, like we are doing here
+	// with"GET /snippet/create" and "POST /snippet/create" .
 	log.Print("starting server on :4000")
 
 	// Use the http.ListenAndServe() function to start a new web server. We pass in
